@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers;
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Validator;
@@ -23,7 +22,7 @@ class EmployeeController extends Controller
 
         $employees = DB::table('employees')
                     ->leftJoin('positions', 'employees.position_id', '=', 'positions.id')
-                    ->get();
+                    ->get(['employees.*', 'positions.name']);
 
         return view('employee.index', compact('pageTitle', 'employees'));
     }
@@ -70,7 +69,6 @@ class EmployeeController extends Controller
         ]);
 
         return $request->all();
-
     }
 
     /**
@@ -79,7 +77,6 @@ class EmployeeController extends Controller
     public function show(string $id)
     {
         $pageTitle = 'Employee Detail';
-
         // $employee = collect(DB::select('
         //     select *, employees.id as employee_id, positions.name as position_name
         //     from employees
@@ -87,7 +84,6 @@ class EmployeeController extends Controller
         //     where employees.id = ?',
         //     [$id])
         // )->first();
-
         $employee = DB::table('employees')
             ->leftJoin('positions', 'employees.position_id', '=', 'positions.id')
             ->where('employees.id', $id)->first();
@@ -100,17 +96,18 @@ class EmployeeController extends Controller
      */
     public function edit(string $id)
     {
+        // dd($id);
         $pageTitle = ' Edit Employee';
 
         $employee = DB::table('employees')
             ->leftJoin('positions', 'employees.position_id', '=', 'positions.id')
-            ->where('employees.id', $id)->first();
+            ->where('employees.id', $id)->first(['employees.*', 'positions.name']);
+
 
         $positions = DB::table('positions')->get();
 
         return view('employee.edit', compact('pageTitle', 'employee', 'positions'));
     }
-
     /**
      * Update the specified resource in storage.
      */
@@ -138,6 +135,7 @@ class EmployeeController extends Controller
             ->where('employees.id', $id)->first();
 
         if ($getEmployee->email == $request->email) {
+
             DB::table('employees')
             ->where('id', $id)
             ->update([
@@ -146,8 +144,22 @@ class EmployeeController extends Controller
                 'age' => $request->age,
                 'position_id' => $request->position,
             ]);
+
         }
         else{
+
+            $messages = [
+                'unique' => 'email sudah terpakai'
+            ];
+
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email|unique:employees',
+            ], $messages);
+
+            if ($validator->fails()) {
+                return redirect()->back()->withErrors($validator)->withInput();
+            }
+
             DB::table('employees')
             ->where('id', $id)
             ->update([
@@ -158,10 +170,8 @@ class EmployeeController extends Controller
                 'position_id' => $request->position,
             ]);
         }
-
         return redirect()->route('employees.index')->with('success', 'Berhasil Mengupdate Data');
     }
-
     /**
      * Remove the specified resource from storage.
      */
@@ -170,7 +180,6 @@ class EmployeeController extends Controller
         DB::table('employees')
             ->where('id', $id)
             ->delete();
-
         return redirect()->route('employees.index');
     }
 }
